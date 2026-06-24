@@ -2,15 +2,16 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>円形ブロック崩し（完全版）</title>
+<title>円形ブロック崩し（フルコントロール版）</title>
 <style>
-  body { background: #111; color: #eee; text-align: center; font-family: sans-serif; margin: 0; }
-  canvas { background: #000; border: 1px solid #555; margin-top: 10px; cursor: crosshair; }
+  body { background: #111; color: #eee; text-align: center; font-family: sans-serif; margin: 0; overflow: hidden; }
+  /* 枠線を戻しました */
+  canvas { background: #000; border: 1px solid #555; margin-top: 10px; }
 </style>
 </head>
 <body>
 <h2>円形ブロック崩し</h2>
-<p>操作：マウス(回転) / クリック or スペース(ビーム発射)</p>
+<p>操作：マウス移動(回転) / 画面のどこでもクリック or スペース(ビーム発射)</p>
 <canvas id="game" width="600" height="600"></canvas>
 
 <script>
@@ -30,7 +31,9 @@ for (let i = 0; i < 36; i++) {
 }
 
 window.addEventListener("keydown", e => { if (e.key === " ") fireBeam(); });
-canvas.addEventListener("mousedown", fireBeam);
+// ビーム発射もwindow全体に適用
+window.addEventListener("mousedown", fireBeam);
+
 function fireBeam() {
     if (beam || gameOver) return;
     const speed = 12;
@@ -43,35 +46,33 @@ function fireBeam() {
     };
 }
 
-canvas.addEventListener("mousemove", e => {
+// パドル回転操作
+window.addEventListener("mousemove", e => {
     const rect = canvas.getBoundingClientRect();
-    paddleAngle = Math.atan2((e.clientY - rect.top) - cy, (e.clientX - rect.left) - cx);
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
+    paddleAngle = Math.atan2(mouseY - cy, mouseX - cx);
 });
 
 function update() {
     if (gameOver) return;
 
-    // ビームと玉の相互作用
     if (beam) {
         beam.x += beam.vx; beam.y += beam.vy;
         
-        // 接触判定
         if (Math.hypot(beam.x - ball.x, beam.y - ball.y) < 25) {
-            // ビームを反射させ攻撃能力付与
             beam.isPowerful = true;
             const angleToCenter = Math.atan2(cy - ball.y, cx - ball.x);
             const speedBeam = Math.hypot(beam.vx, beam.vy);
             beam.vx = Math.cos(angleToCenter) * speedBeam;
             beam.vy = Math.sin(angleToCenter) * speedBeam;
 
-            // 玉の軌道も中心から外側へ変更
             const angleFromCenter = Math.atan2(ball.y - cy, ball.x - cx);
             const speedBall = Math.hypot(ball.vx, ball.vy);
             ball.vx = Math.cos(angleFromCenter) * speedBall;
             ball.vy = Math.sin(angleFromCenter) * speedBall;
         }
 
-        // 反射ビームによるブロック破壊
         if (beam.isPowerful) {
             blocks.forEach(b => {
                 if (b.alive && Math.hypot(beam.x - b.x, beam.y - b.y) < 20) {
@@ -83,10 +84,8 @@ function update() {
         if (Math.hypot(beam.x - cx, beam.y - cy) > fieldRadius) beam = null;
     }
 
-    // 玉移動
     ball.x += ball.vx; ball.y += ball.vy;
 
-    // 玉によるブロック破壊
     for (const b of blocks) {
         if (!b.alive) continue;
         if (Math.hypot(ball.x - b.x, ball.y - b.y) < ball.r + blockSize / 2) {
@@ -96,7 +95,6 @@ function update() {
         }
     }
 
-    // パドル衝突
     const distFromCenter = Math.hypot(ball.x - cx, ball.y - cy);
     if (Math.abs(distFromCenter - paddleRadius) < 10) {
         const angle = Math.atan2(ball.y - cy, ball.x - cx);
@@ -109,7 +107,6 @@ function update() {
         }
     }
 
-    // 壁反射
     if (distFromCenter > fieldRadius - ball.r) {
         const nx = (ball.x - cx) / distFromCenter;
         const ny = (ball.y - cy) / distFromCenter;
@@ -142,7 +139,7 @@ function draw() {
     
     if (beam) { 
         ctx.fillStyle = "#ff0"; 
-        ctx.fillRect(beam.x-15, beam.y-15, 40, 40); 
+        ctx.fillRect(beam.x-15, beam.y-15, 10, 10); 
     }
     
     ctx.fillStyle = "#fff"; ctx.font = "20px Arial"; ctx.fillText("残機: " + lives, 20, 30);
